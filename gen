@@ -1,97 +1,97 @@
 Program : ExtDefList 
 ;
 
-ExtDefList : #ExtDef ExtDefList 
-	#| /*empty*/
+ExtDefList : ExtDef ExtDefList 
+	| /*empty*/
 ;
 
-ExtDef : #Specifier ExtDecList SEMI 
-	#| Specifier SEMI 
-	#| Specifier FunDec CompSt 
+ExtDef : Specifier ExtDecList SEMI 
+	| Specifier SEMI 
+	| Specifier FunDec CompSt 
 ;
 
-ExtDecList :# VarDec 
-	#| VarDec COMMA ExtDecList 
+ExtDecList : {t = base_t} VarDec {enter(id, t)} 
+	| {t = base_t} VarDec {enter(id, t)} COMMA ExtDecList 
 ;
 
-Specifier : #TYPE 
-	#| StructSpecifier 
+Specifier : TYPE {base_t = TYPE.val}
+	| StructSpecifier 
 ;
 
-StructSpecifier : #STRUCT OptTag LC DefList RC 
-	# | STRUCT Tag 
+StructSpecifier : #STRUCT OptTag LC {init struct; pushsym} DefList RC {popsym if id!=NULL enter(id, t) base_t = struct t} 
+	 | #STRUCT Tag {lookup(id) base_t = struct tag} 
 ;
-OptTag : #/* empty */ 
-	| #ID 
-;
-
-Tag : #ID 
+OptTag : #/* empty */ {id = NULL}
+	| #ID {id = ID}
 ;
 
-VarDec : #ID 
-	#| VarDec LB INT RB
+Tag : #ID {id = ID}
 ;
 
-FunDec : # ID LP VarList RP 
-	#| ID LP RP 
+VarDec : ID {id=ID.val, lookup()}
+	| VarDec LB INT RB {t = array(INT, t)}
 ;
 
-VarList : #ParamDec COMMA VarList 
-	#| ParamDec 
+FunDec :  ID LP VarList RP 
+	| ID LP RP 
 ;
 
-ParamDec : #Specifier VarDec 
+VarList : ParamDec COMMA VarList 
+	| ParamDec 
 ;
 
-CompSt : #LC DefList StmtList RC 
+ParamDec : Specifier VarDec 
 ;
 
-StmtList : #/* empty */ 
-	#| Stmt StmtList 
+CompSt : LC DefList StmtList RC 
 ;
 
-Stmt : #Exp SEMI
-	#| CompSt 
-	#| RETURN Exp SEMI
-	#| IF LP Exp RP Stmt %prec LOWER_THAN_ELSE 
-	#| IF LP Exp RP Stmt ELSE Stmt 
-	#| WHILE LP Exp RP Stmt 
+StmtList : /* empty */ 
+	| Stmt StmtList 
+;
+
+Stmt : Exp SEMI
+	| CompSt 
+	| RETURN Exp SEMI
+	| IF LP Exp RP Stmt %prec LOWER_THAN_ELSE 
+	| IF LP Exp RP Stmt ELSE Stmt 
+	| WHILE LP Exp RP Stmt 
 ;
 
 DefList : /* empty */ 
-	#| Def DefList 
+	| Def DefList 
 ;
 
-Def : #Specifier DecList SEMI 
+Def : Specifier DecList SEMI 
 ;
 
-DecList : #Dec 
-	#| Dec COMMA DecList 
+DecList : #{t = base_t} Dec 
+	| #{t = base_t} Dec {enter(id, t)} COMMA DecList 
 ;
 
-Dec : #VarDec 
-	#| VarDec ASSIGNOP Exp 
+Dec : VarDec 
+	| VarDec ASSIGNOP Exp 
 ;
 
-Exp : #Exp ASSIGNOP Exp 
-	#| Exp AND Exp 
-	#| Exp OR Exp 
-	#| Exp RELOP Exp 
-	#| Exp PLUS Exp 
-	#| Exp MINUS Exp  
-	#| Exp STAR Exp 
-	#| Exp DIV Exp 
-	#| LP Exp RP 
-	#| MINUS Exp 
-	#| NOT Exp 
-	#| ID LP Args RP 
-	#| Exp LB Exp RB
-	#| Exp DOT ID 
-	#| ID 
-	#| INT 
-	#| FLOAT 
+Exp : {has_ID=f} Exp {has_ID?, left_t = t} ASSIGNOP Exp {t = left_t} 
+	| Exp {t is int} AND Exp {t is int} 
+	| Exp {t is int} OR Exp {t is int} 
+	| Exp {t is int} RELOP Exp {t is int}
+	| Exp {t is BASIC} PLUS Exp {t is BASIC} 
+	| Exp {t is BASIC} MINUS Exp {t is BASIC}  
+	| Exp {t is BASIC} STAR Exp {t is BASIC} 
+	| Exp {t is BASIC} DIV Exp {t is BASIC}
+	| LP Exp RP 
+	| MINUS Exp {t is BASIC} 
+	| NOT Exp {t is int}
+	| ID {lookup; is func} LP Args RP 
+	| Exp {t is arr} LB Exp {t is int} RB {t = arr.sub}
+	| Exp {t is struct} DOT ID {t = t.partner} 
+	| ID {lookup; t, hasID} 
+	| INT {t} 
+	| FLOAT {t} 
 ;
 
-Args : #Exp COMMA Args 
-	#| Exp 
+Args : Exp COMMA Args 
+	| Exp 
 ;

@@ -17,23 +17,25 @@ debug:
 	vim syntax.output
 
 test: tests/*
+# ./parser tests/test00.cmm
+
 	./parser tests/test01.cmm
-	# ./parser tests/test02.cmm
-	# ./parser tests/test03.cmm
-	# ./parser tests/test04.cmm
-	# ./parser tests/test05.cmm
-	# ./parser tests/test06.cmm
-	# ./parser tests/test07.cmm
-	# ./parser tests/test08.cmm
-	# ./parser tests/test09.cmm
-	# ./parser tests/test10.cmm
-	# ./parser tests/test11.cmm
-	# ./parser tests/test12.cmm
-	# ./parser tests/test13.cmm
-	# ./parser tests/test14.cmm
-	# ./parser tests/test15.cmm
-	# ./parser tests/test16.cmm
-	# ./parser tests/test17.cmm
+	./parser tests/test02.cmm
+	./parser tests/test03.cmm
+	./parser tests/test04.cmm
+	./parser tests/test05.cmm
+	./parser tests/test06.cmm
+	./parser tests/test07.cmm
+	./parser tests/test08.cmm
+	./parser tests/test09.cmm
+	./parser tests/test10.cmm
+	./parser tests/test11.cmm
+	./parser tests/test12.cmm
+	./parser tests/test13.cmm
+	./parser tests/test14.cmm
+	./parser tests/test15.cmm
+	./parser tests/test16.cmm
+	./parser tests/test17.cmm
 
 	# ./parser tests/test18.cmm
 	# ./parser tests/test19.cmm
