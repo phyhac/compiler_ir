@@ -6,7 +6,6 @@
 typedef struct Type_* Type;
 typedef struct FieldList_* FieldList;
 typedef struct FuncList_* FuncList;
-typedef struct FieldList_* FieldList;
 
 struct Type_ {
     enum {BASIC, ARRAY, STRUCTURE, FUNCTION} kind;

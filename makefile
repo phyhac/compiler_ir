@@ -16,30 +16,48 @@ debug:
 	bison -d syntax.y -v
 	vim syntax.output
 
-test: tests/*
+test: ir_tests/*
+	./parser ir_test/test01.cmm
+
+
+
+test_lex: lex_tests/*
+	./parser lex_tests/test01.cmm
+	./parser lex_tests/test02.cmm
+	./parser lex_tests/test03.cmm
+	./parser lex_tests/test04.cmm
+	./parser lex_tests/test05.cmm
+	./parser lex_tests/test06.cmm
+	./parser lex_tests/test07.cmm
+	./parser lex_tests/test08.cmm
+	./parser lex_tests/test09.cmm
+	./parser lex_tests/test10.cmm
+
+
+test_syntax: syntax_tests/*
 # ./parser tests/test00.cmm
 
-	./parser tests/test01.cmm
-	./parser tests/test02.cmm
-	./parser tests/test03.cmm
-	./parser tests/test04.cmm
-	./parser tests/test05.cmm
-	./parser tests/test06.cmm
-	./parser tests/test07.cmm
-	./parser tests/test08.cmm
-	./parser tests/test09.cmm
-	./parser tests/test10.cmm
-	./parser tests/test11.cmm
-	./parser tests/test12.cmm
-	./parser tests/test13.cmm
-	./parser tests/test14.cmm
-	./parser tests/test15.cmm
-	./parser tests/test16.cmm
-	./parser tests/test17.cmm
+	./parser syntax_tests/test01.cmm
+	./parser syntax_tests/test02.cmm
+	./parser syntax_tests/test03.cmm
+	./parser syntax_tests/test04.cmm
+	./parser syntax_tests/test05.cmm
+	./parser syntax_tests/test06.cmm
+	./parser syntax_tests/test07.cmm
+	./parser syntax_tests/test08.cmm
+	./parser syntax_tests/test09.cmm
+	./parser syntax_tests/test10.cmm
+	./parser syntax_tests/test11.cmm
+	./parser syntax_tests/test12.cmm
+	./parser syntax_tests/test13.cmm
+	./parser syntax_tests/test14.cmm
+	./parser syntax_tests/test15.cmm
+	./parser syntax_tests/test16.cmm
+	./parser syntax_tests/test17.cmm
 
-	# ./parser tests/test18.cmm
-	# ./parser tests/test19.cmm
-	# ./parser tests/test20.cmm
-	# ./parser tests/test21.cmm
-	# ./parser tests/test22.cmm
-	# ./parser tests/test23.cmm
+	# ./parser syntax_tests/test18.cmm
+	# ./parser syntax_tests/test19.cmm
+	# ./parser syntax_tests/test20.cmm
+	# ./parser syntax_tests/test21.cmm
+	# ./parser syntax_tests/test22.cmm
+	# ./parser syntax_tests/test23.cmm
