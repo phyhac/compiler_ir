@@ -17,7 +17,8 @@ debug:
 	vim syntax.output
 
 test: ir_tests/*
-	./parser ir_test/test01.cmm
+	./parser ir_test/test00.cmm
+	# ./parser ir_test/test01.cmm
 
 
 
