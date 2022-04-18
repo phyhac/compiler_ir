@@ -42,7 +42,7 @@
 %%
 /* syntax */
 
-Program : ExtDefList { $$ = create_node("Program", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); if(has_error == 0) {/*show_tree($$, 0);*/ parse_AST($$);} }
+Program : ExtDefList { $$ = create_node("Program", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); if(has_error == 0) {show_tree($$, 0); parse_AST($$);} }
 ;
 
 ExtDefList : ExtDef ExtDefList { $$ = create_node("ExtDefList", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); add_son($$, $2); }

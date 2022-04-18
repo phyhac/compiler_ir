@@ -1,0 +1,11 @@
+int main() {
+    int i, j;
+    i = 1;
+    j = 2;
+    i = i + 3;
+    i = i - 4;
+    i = i * 5;
+    i = i / 6;
+    i = -j; 
+    return 0;
+}
