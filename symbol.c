@@ -62,6 +62,8 @@ Type const_type;
 char *err_msg;
 char *ret_var;
 FieldList fun_args;
+char *truelabel;
+char *falselabel;
 
 void syn_error(int err_no, char *err_msg) {
     printf("Error type %d in Line %d: %s.\n", err_no, glb_node->lineno, err_msg);
@@ -91,6 +93,8 @@ void init_symtab() {
     cur_symtab_type = 0;
     const_type = malloc(sizeof(struct Type_));
     err_msg = malloc(30);
+    truelabel = NULL;
+    falselabel = NULL;
 }
 
 char *type_string(Type type) {
@@ -231,6 +235,9 @@ struct InterCode_ {
         FUNC,
         PARAM,
         RETURN,
+        DEC,
+        CALL,
+        ARG,
     } type;
     InterCode prev;
     InterCode next;
@@ -246,6 +253,12 @@ char *i2s(int val) {
 char *ptr(char *val) {
     char *s = malloc(strlen(val));
     sprintf(s, "*%s", val);
+    return s;
+}
+
+char *addr(char *val) {
+    char *s = malloc(strlen(val));
+    sprintf(s, "&%s", val);
     return s;
 }
 
@@ -549,6 +562,63 @@ InterCode code_RETURN(char *target) {
     return code;
 }
 
+InterCode code_DEC(char *target, char *arg1) {
+    InterCode code = malloc(sizeof(struct InterCode_));
+    code->type = DEC;
+    code->prev = NULL;
+    code->next = NULL;
+
+    CodeElem elem = malloc(sizeof(struct CodeElem_));
+    elem->next = NULL;
+    code->content = elem;
+    elem->type = TARGET;
+    elem->detail = target;
+
+    elem->next = malloc(sizeof(struct CodeElem_));
+    elem = elem->next;
+    elem->next = NULL;
+    elem->type = ARG1;
+    elem->detail = arg1;
+
+    return code;
+}
+
+InterCode code_CALL(char *target, char *arg1) {
+    InterCode code = malloc(sizeof(struct InterCode_));
+    code->type = CALL;
+    code->prev = NULL;
+    code->next = NULL;
+
+    CodeElem elem = malloc(sizeof(struct CodeElem_));
+    elem->next = NULL;
+    code->content = elem;
+    elem->type = TARGET;
+    elem->detail = target;
+
+    elem->next = malloc(sizeof(struct CodeElem_));
+    elem = elem->next;
+    elem->next = NULL;
+    elem->type = ARG1;
+    elem->detail = arg1;
+
+    return code;
+}
+
+InterCode code_ARG(char *target) {
+    InterCode code = malloc(sizeof(struct InterCode_));
+    code->type = ARG;
+    code->prev = NULL;
+    code->next = NULL;
+
+    CodeElem elem = malloc(sizeof(struct CodeElem_));
+    elem->next = NULL;
+    code->content = elem;
+    elem->type = TARGET;
+    elem->detail = target;
+
+    return code;
+}
+
 void print_code(InterCode insts) {
     InterCode cur_inst;
     CodeElem cur_elem;
@@ -619,6 +689,15 @@ void print_code(InterCode insts) {
             break;
             case RETURN:
                 printf("RETURN %s\n", target);
+            break;
+            case DEC:
+                printf("DEC %s %s\n", target, arg1);
+            break;
+            case CALL:
+                printf("%s := CALL %s\n", target, arg1);
+            break;
+            case ARG:
+                printf("ARG %s\n", target);
             break;
             default:
                 printf("[alert] print instruction error..\n");
@@ -694,14 +773,15 @@ InterCode Args() {
     if (son_cnt == -1) {
         // empty
         perror("Args is empty.");
-        return;
+        return NULL;
     } else if (son_cnt == 1) {
         if (
             !strcmp(cur_node->son[0]->tag, "Exp")
         ) {
 
             glb_node = glb_node->son[0];
-            Exp();
+            InterCode sub_code0 = Exp();
+            char *sub_var0 = ret_var;
             glb_node = cur_node;
 
             if (!fun_args || !is_same_type(cur_type, fun_args->type)) {
@@ -711,7 +791,11 @@ InterCode Args() {
                 fun_args = fun_args->next;
             }
 
-            return;
+            ret_var = NULL;
+            return conn_code(
+                sub_code0,
+                code_ARG(sub_var0)
+            );
         }
     } else if (son_cnt == 3) {
         if (
@@ -721,7 +805,8 @@ InterCode Args() {
         ) {
 
             glb_node = glb_node->son[0];
-            Exp();
+            InterCode sub_code0 = Exp();
+            char *sub_var0 = ret_var;
             glb_node = cur_node;
 
             if (!fun_args || !is_same_type(cur_type, fun_args->type)) {
@@ -734,15 +819,19 @@ InterCode Args() {
             glb_node = cur_node;
 
             glb_node = glb_node->son[2];
-            Args();
+            InterCode sub_code2 = Args();
+            char *sub_var2 = ret_var;
             glb_node = cur_node;
 
-            return;        
+            return conn_code(
+                sub_code0,
+                sub_code2
+            );
         }
     }
     printf("%d ", cur_node->lineno);
     perror("Args error");
-    return;
+    return NULL;
 }
 
 InterCode Exp() {
@@ -790,7 +879,6 @@ InterCode Exp() {
             cur_type->detail.basic = INT;
             cur_type->size = 4;
             
-
             return NULL;
         } else if (!strcmp(cur_node->son[0]->tag, "FLOAT")) {
 
@@ -1193,14 +1281,14 @@ InterCode Exp() {
             glb_node = cur_node;
 
             glb_node = glb_node->son[1];
-            Exp();
+            InterCode sub_code1 = Exp();
             glb_node = cur_node;
 
             glb_node = glb_node->son[2];
             // RP
             glb_node = cur_node;
 
-            return;
+            return sub_code1;
         }
 
     } else if (son_cnt == 4) {
@@ -1216,7 +1304,7 @@ InterCode Exp() {
             sym_id = glb_node->val.s;
             glb_node = cur_node;
 
-
+            char *func_name = sym_id;
             FieldList tmp = lookup(sym_id);
             if (!tmp) {
                 sprintf(err_msg, "Undefined function \"%s\"", sym_id);
@@ -1235,7 +1323,7 @@ InterCode Exp() {
             glb_node = cur_node;
 
             glb_node = glb_node->son[2];
-            Args();
+            InterCode sub_code2 = Args();
             glb_node = cur_node;
 
             glb_node = glb_node->son[3];
@@ -1244,7 +1332,11 @@ InterCode Exp() {
 
             cur_type = tmp->type->detail.function->ret;
 
-            return;
+            ret_var = temp_var();
+            return conn_code(
+                sub_code2,
+                code_CALL(ret_var, func_name)
+            );
         } else if (
             !strcmp(cur_node->son[0]->tag, "Exp") &&
             !strcmp(cur_node->son[1]->tag, "LB") &&
@@ -1252,7 +1344,8 @@ InterCode Exp() {
             !strcmp(cur_node->son[3]->tag, "RB")
         ) {
             glb_node = glb_node->son[0];
-            Exp();
+            InterCode sub_code0 = Exp();
+            char *sub_var0 = ret_var;
             glb_node = cur_node;
 
             if (!is_array(cur_type)) {
@@ -1266,7 +1359,8 @@ InterCode Exp() {
             glb_node = cur_node;
 
             glb_node = glb_node->son[2];
-            Exp();
+            InterCode sub_code2 = Exp();
+            char *sub_var2 = ret_var;
             glb_node = cur_node;
 
             {
@@ -1280,12 +1374,24 @@ InterCode Exp() {
             // RB
             glb_node = cur_node;
 
-            return;
+            char *offset = temp_var();
+            char *base_addr = temp_var();
+            ret_var = ptr(base_addr);
+            return conn_code(
+                conn_code( 
+                    conn_code(
+                        sub_code0,
+                        sub_code2
+                    ),
+                    code_D_STAR(offset, sub_var2, i2s(arr_type->detail.array.elem->size))
+                ),
+                code_PLUS(base_addr, addr(sub_var0), offset)
+            );
         }
     }
     printf("%d ", cur_node->lineno);
     perror("Exp error");
-    return;
+    return NULL;
 }
 
 InterCode Dec() {
@@ -1301,9 +1407,17 @@ InterCode Dec() {
 
             glb_node = glb_node->son[0];
             InterCode sub_code0 = VarDec();
+            char *sub_var0 = ret_var;
             glb_node = cur_node;
 
-            return sub_code0;
+            int i, j = 4;
+            for (i = 0; i < size_cnt; i++) {
+                j *= size_stack[i];
+            }
+            return conn_code(
+                sub_code0,
+                code_DEC(sub_var0, i2s(j))
+            );
         }
     } else if (son_cnt == 3) {
         if (
@@ -1313,7 +1427,8 @@ InterCode Dec() {
         ) {
 
             glb_node = glb_node->son[0];
-            VarDec();
+            InterCode sub_code0 = VarDec();
+            char *sub_var0 = ret_var;
             glb_node = cur_node;
 
             Type left_type = cur_type;
@@ -1323,7 +1438,8 @@ InterCode Dec() {
             glb_node = cur_node;
 
             glb_node = glb_node->son[2];
-            Exp();
+            InterCode sub_code2 = Exp();
+            char *sub_var2 = ret_var;
             glb_node = cur_node;
 
             {
@@ -1332,12 +1448,21 @@ InterCode Dec() {
                 }
             }
 
-            return;
-        } 
+            return conn_code(
+                conn_code(
+                    code_DEC(sub_var0, i2s(left_type->size)),
+                    conn_code(
+                        sub_code0,
+                        sub_code2
+                    )
+                ),
+                code_ASSIGNOP(sub_var0, sub_var2)
+            );
+        }
     }
     printf("%d ", cur_node->lineno);
     perror("Dec error");
-    return;
+    return NULL;
 }
 
 InterCode DecList() {
@@ -1465,7 +1590,7 @@ InterCode DefList() {
     }
     printf("%d ", cur_node->lineno);
     perror("DefList error");
-    return;
+    return NULL;
 }
 
 InterCode Stmt() {
@@ -1482,10 +1607,10 @@ InterCode Stmt() {
         ) {
 
             glb_node = glb_node->son[0];
-            CompSt();
+            InterCode sub_code0 = CompSt();
             glb_node = cur_node;
 
-            return;
+            return sub_code0;
         }
     } else if (son_cnt == 2) {
         if (
@@ -1549,7 +1674,7 @@ InterCode Stmt() {
             glb_node = cur_node;
 
             glb_node = glb_node->son[2];
-            Exp();
+            InterCode sub_code2 = Exp();
             glb_node = cur_node;
 
             glb_node = glb_node->son[3];
@@ -1557,7 +1682,7 @@ InterCode Stmt() {
             glb_node = cur_node;
 
             glb_node = glb_node->son[4];
-            Stmt();
+            InterCode sub_code4 = Stmt();
             glb_node = cur_node;
 
             return;
@@ -1635,7 +1760,7 @@ InterCode Stmt() {
     }
     printf("%d ", cur_node->lineno);
     perror("Stmt error");
-    return;
+    return NULL;
 }
 
 InterCode StmtList() {
@@ -1654,7 +1779,7 @@ InterCode StmtList() {
             glb_node = glb_node->son[0];
             InterCode sub_code0 = Stmt();
             glb_node = cur_node;
-
+            
             glb_node = glb_node->son[1];
             InterCode sub_code1 = StmtList();
             glb_node = cur_node;
@@ -1667,7 +1792,7 @@ InterCode StmtList() {
     }
     printf("%d ", cur_node->lineno);
     perror("StmtList error");
-    return;
+    return NULL;
 }
 
 InterCode CompSt() {
@@ -1711,7 +1836,7 @@ InterCode CompSt() {
     }
     printf("%d ", cur_node->lineno);
     perror("CompSt error");
-    return;
+    return NULL;
 }
 
 InterCode ParamDec() {
@@ -1721,7 +1846,7 @@ InterCode ParamDec() {
     if (son_cnt == -1) {
         // empty
         perror("ParamDec is empty.");
-        return;
+        return NULL;
     } else if (son_cnt == 2) {
         if (
             !strcmp(cur_node->son[0]->tag, "Specifier") &&
@@ -1734,17 +1859,18 @@ InterCode ParamDec() {
 
             glb_node = glb_node->son[1];
             VarDec();
+            char *sub_var1 = ret_var;
             glb_node = cur_node;
 
             if (!var_is_exist) {
                 enter(sym_id);
             }
-            return;
+            return code_PARAM(sub_var1);
         }
     }
     printf("%d ", cur_node->lineno);
     perror("ParamDec error");
-    return;
+    return NULL;
 }
 
 InterCode VarList() {
@@ -1754,17 +1880,17 @@ InterCode VarList() {
     if (son_cnt == -1) {
         // empty
         perror("VarList is empty.");
-        return;
+        return NULL;
     } else if (son_cnt == 1) {
         if (
             !strcmp(cur_node->son[0]->tag, "ParamDec")
         ) {
 
             glb_node = glb_node->son[0];
-            ParamDec();
+            InterCode sub_code0 = ParamDec();
             glb_node = cur_node;
 
-            return;
+            return sub_code0;
         }
     } else if (son_cnt == 3) {
         if (
@@ -1774,7 +1900,7 @@ InterCode VarList() {
         ) {
 
             glb_node = glb_node->son[0];
-            ParamDec();
+            InterCode sub_code0 = ParamDec();
             glb_node = cur_node;
 
             glb_node = glb_node->son[1];
@@ -1782,15 +1908,18 @@ InterCode VarList() {
             glb_node = cur_node;
 
             glb_node = glb_node->son[2];
-            VarList();
+            InterCode sub_code2 = VarList();
             glb_node = cur_node;
 
-            return;
+            return conn_code(
+                sub_code0,
+                sub_code2
+            );
         }
     } 
     printf("%d ", cur_node->lineno);
     perror("VarList error");
-    return;
+    return NULL;
 }
 
 InterCode FunDec() {
@@ -1876,13 +2005,14 @@ InterCode FunDec() {
                 symtab = tmp;
                 cur_symtab_type = FUNCTION;
             }
+            char *func_name = sym_id;
 
             glb_node = glb_node->son[1];
             // LP
             glb_node = cur_node;
 
             glb_node = glb_node->son[2];
-            VarList();
+            InterCode sub_code2 = VarList();
             glb_node = cur_node;
 
             // record the args
@@ -1892,7 +2022,10 @@ InterCode FunDec() {
             // RP
             glb_node = cur_node;
 
-            return;
+            return conn_code(
+                code_FUNC(func_name),
+                sub_code2
+            );
         }
     }
     printf("%d ", cur_node->lineno);
@@ -1929,6 +2062,7 @@ InterCode VarDec() {
                     }
                 }
             }
+            ret_var = sym_id;
             glb_node = cur_node;
 
             return NULL;
@@ -1966,7 +2100,7 @@ InterCode VarDec() {
     } 
     printf("%d ", cur_node->lineno);
     perror("VarDec error");
-    return;
+    return NULL;
 }
 
 InterCode Tag() {
@@ -1976,7 +2110,7 @@ InterCode Tag() {
     if (son_cnt == -1) {
         // empty
         perror("Program is empty.");
-        return;
+        return NULL;
     } else if (son_cnt == 1) {
         if (
             !strcmp(cur_node->son[0]->tag, "ID")
@@ -1987,12 +2121,12 @@ InterCode Tag() {
             sym_id = glb_node->val.s;
             glb_node = cur_node;
 
-            return;
+            return NULL;
         }
     }
     printf("%d ", cur_node->lineno);
     perror("Tag error");
-    return;
+    return NULL;
 }
 
 InterCode OptTag() {
@@ -2002,7 +2136,7 @@ InterCode OptTag() {
     if (son_cnt == -1) {
         // empty
         sym_id = NULL;
-        return;
+        return NULL;
     } else if (son_cnt == 1) { 
         if (
             !strcmp(cur_node->son[0]->tag, "ID")
@@ -2013,12 +2147,12 @@ InterCode OptTag() {
             sym_id = glb_node->val.s;
             glb_node = cur_node;
 
-            return;
+            return NULL;
         }
     } 
     printf("%d ", cur_node->lineno);
     perror("OptTag error");
-    return;
+    return NULL;
 }
 
 InterCode StructSpecifier() {
@@ -2028,7 +2162,7 @@ InterCode StructSpecifier() {
     if (son_cnt == -1) {
         // empty
         perror("StructSpecifier is empty.");
-        return;
+        return NULL;
     } else if (son_cnt == 2) {
         if (
             !strcmp(cur_node->son[0]->tag, "STRUCT") &&
@@ -2052,7 +2186,7 @@ InterCode StructSpecifier() {
             }
             glb_node = cur_node;
 
-            return;
+            return NULL;
         }
     } else if (son_cnt == 5) {
         if (
@@ -2107,12 +2241,12 @@ InterCode StructSpecifier() {
                 }
             }
 
-            return;
+            return NULL;
         }
     }
     printf("%d ", cur_node->lineno);
     perror("StructSpecifier error");
-    return;
+    return NULL;
 }
 
 InterCode Specifier() {
@@ -2122,7 +2256,7 @@ InterCode Specifier() {
     if (son_cnt == -1) {
         // empty
         perror("Program is empty.");
-        return;
+        return NULL;
     } else if (son_cnt == 1) {
         if (
             !strcmp(cur_node->son[0]->tag, "TYPE")
@@ -2137,8 +2271,10 @@ InterCode Specifier() {
                 
                 if (!strcmp(type_name, "int")) {
                     cur_type->detail.basic = INT;
+                    cur_type->size = 4;
                 } else if (!strcmp(type_name, "float")) {
                     cur_type->detail.basic = FLOAT;
+                    cur_type->size = 8;
                 } else {
                     printf("no such TYPE: %s\n", type_name);
                     exit(1);
@@ -2146,7 +2282,7 @@ InterCode Specifier() {
             }
             glb_node = cur_node;
 
-            return;
+            return NULL;
         } else if (
             !strcmp(cur_node->son[0]->tag, "StructSpecifier")
         ) {
@@ -2155,12 +2291,12 @@ InterCode Specifier() {
             StructSpecifier();
             glb_node = cur_node;
 
-            return;
+            return NULL;
         }
     } 
     printf("%d ", cur_node->lineno);
     perror("Specifier error");
-    return;
+    return NULL;
 }
 
 InterCode ExtDecList() {
@@ -2170,7 +2306,7 @@ InterCode ExtDecList() {
     if (son_cnt == -1) {
         // empty
         perror("ExtDecList is empty.");
-        return;
+        return NULL;
     } else if (son_cnt == 1) {
         
         if (
@@ -2187,7 +2323,7 @@ InterCode ExtDecList() {
                 }
             }
 
-            return;
+            return NULL;
         }
     } else if (son_cnt == 3) {
         if (
@@ -2214,12 +2350,12 @@ InterCode ExtDecList() {
             ExtDecList();
             glb_node = cur_node;
 
-            return;
+            return NULL;
         }
     }
     printf("%d ", cur_node->lineno);
     perror("ExtDecList error");
-    return;
+    return NULL;
 }
 
 InterCode ExtDef() {
@@ -2244,7 +2380,7 @@ InterCode ExtDef() {
             // SEMI
             glb_node = cur_node;
 
-            return;
+            return NULL;
         }
     } else if (son_cnt == 3) {
         if (
@@ -2265,7 +2401,7 @@ InterCode ExtDef() {
             // SEMI
             glb_node = cur_node;
 
-            return;
+            return NULL;
         } else if (
             !strcmp(cur_node->son[0]->tag, "Specifier") &&
             !strcmp(cur_node->son[1]->tag, "FunDec") &&
@@ -2316,7 +2452,7 @@ InterCode ExtDef() {
     } 
     printf("%d ", cur_node->lineno);
     perror("ExtDef error");
-    return;
+    return NULL;
 }
 
 InterCode ExtDefList() {
@@ -2348,7 +2484,7 @@ InterCode ExtDefList() {
     }
     printf("%d ", cur_node->lineno);
     perror("ExtDefList error");
-    return;
+    return NULL;
 }
 
 InterCode Program() {

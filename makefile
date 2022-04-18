@@ -18,9 +18,9 @@ debug:
 
 test: ir_tests/*
 	# ./parser ir_tests/test01.cmm
-	./parser ir_tests/test05.cmm
+	# ./parser ir_tests/test05.cmm
 	# ./parser ir_tests/test06.cmm
-	# ./parser ir_tests/test07.cmm
+	./parser ir_tests/test07.cmm
 	# ./parser ir_tests/test08.cmm
 
 
