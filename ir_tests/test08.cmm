@@ -1,5 +1,5 @@
 int main() {
-    int i;
+    int i, a[10];
     i = 0;
     if (i == 1) {
         i = 1;
@@ -9,10 +9,11 @@ int main() {
 
     if (i == 2) {
         i = 3;
+        a[2] = 9;
     }
 
     while (i < 10) {
-        i = i + 1;
+        i = a[1] + 8;
     }
     return 0;
 }

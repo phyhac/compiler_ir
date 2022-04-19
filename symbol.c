@@ -275,6 +275,13 @@ char *temp_var() {
     return s;
 }
 
+int label_cnt = 1;
+char *new_label() {
+    char *s = malloc(sizeof(8));
+    sprintf(s, "label%d", label_cnt++);
+    return s;
+}
+
 InterCode code_ASSIGNOP(char *target, char *arg1) {
     InterCode code = malloc(sizeof(struct InterCode_));
     code->type = ASSIGNOP;
@@ -926,7 +933,10 @@ InterCode Exp() {
             glb_node = cur_node;
 
             glb_node = glb_node->son[1];
-            Exp();
+            InterCode sub_code1 = Exp();
+            char *tmp = truelabel;
+            truelabel = falselabel;
+            falselabel = tmp;
             glb_node = cur_node;
 
             {
@@ -935,7 +945,7 @@ InterCode Exp() {
                 }
             }
 
-            return;
+            return sub_code1;
         }
     } else if (son_cnt == 3) {
         if (
@@ -984,7 +994,10 @@ InterCode Exp() {
         ) {
             
             glb_node = glb_node->son[0];
-            Exp();
+            InterCode sub_code0 = Exp();
+            char *tmp_truelabel0 = truelabel;
+            truelabel = NULL;
+            // falselabel should flow over.
             glb_node = cur_node;
 
             {
@@ -998,7 +1011,7 @@ InterCode Exp() {
             glb_node = cur_node;
 
             glb_node = glb_node->son[2];
-            Exp();
+            InterCode sub_code2 = Exp();
             glb_node = cur_node;
 
             {
@@ -1007,7 +1020,18 @@ InterCode Exp() {
                 }
             }
 
-            return;
+            /*
+            exp0
+            label true0
+            exp2
+            */
+            return conn_code(
+                sub_code0,
+                conn_code(
+                    code_LABEL(tmp_truelabel0),
+                    sub_code2
+                )
+            );
         } else if (
             !strcmp(cur_node->son[0]->tag, "Exp") &&
             !strcmp(cur_node->son[1]->tag, "OR") &&
@@ -1015,7 +1039,8 @@ InterCode Exp() {
         ) {
 
             glb_node = glb_node->son[0];
-            Exp();
+            InterCode sub_code0 = Exp();
+            char *tmp_falselabel0 = falselabel;
             glb_node = cur_node;
             
             {
@@ -1029,7 +1054,7 @@ InterCode Exp() {
             glb_node = cur_node;
 
             glb_node = glb_node->son[2];
-            Exp();
+            InterCode sub_code2 = Exp();
             glb_node = cur_node;
 
             {
@@ -1038,7 +1063,18 @@ InterCode Exp() {
                 }
             }
 
-            return;
+            /*
+            exp0
+            label true0
+            exp2
+            */
+            return conn_code(
+                sub_code0,
+                conn_code(
+                    code_LABEL(tmp_falselabel0),
+                    sub_code2
+                )
+            );
         } else if (
             !strcmp(cur_node->son[0]->tag, "Exp") &&
             !strcmp(cur_node->son[1]->tag, "RELOP") &&
@@ -1046,7 +1082,8 @@ InterCode Exp() {
         ) {
 
             glb_node = glb_node->son[0];
-            Exp();
+            InterCode sub_code0 = Exp();
+            char *sub_var0 = ret_var;
             glb_node = cur_node;
 
             {
@@ -1057,10 +1094,12 @@ InterCode Exp() {
 
             glb_node = glb_node->son[1];
             // RELOP
+            char *relop_s = glb_node->val.s;
             glb_node = cur_node;
 
             glb_node = glb_node->son[2];
-            Exp();
+            InterCode sub_code2 = Exp();
+            char *sub_var2 = ret_var;
             glb_node = cur_node;
 
             {
@@ -1068,8 +1107,20 @@ InterCode Exp() {
                     syn_error(7, "Type mismatched for operands");
                 }
             }
-
-            return;
+            if (!truelabel)
+                truelabel = new_label();
+            if (!falselabel)
+                falselabel = new_label();
+            return conn_code(
+                conn_code(
+                    sub_code0,
+                    sub_code2
+                ),
+                conn_code(
+                    code_T_JMP(truelabel, relop(sub_var0, relop_s, sub_var2)),
+                    code_JMP(falselabel)
+                )
+            );
         } else if (
             !strcmp(cur_node->son[0]->tag, "Exp") &&
             !strcmp(cur_node->son[1]->tag, "PLUS") &&
@@ -1269,7 +1320,7 @@ InterCode Exp() {
                 pop_symtab();
             }
 
-            return;
+            return NULL;
         } else if (
             !strcmp(cur_node->son[0]->tag, "LP") &&
             !strcmp(cur_node->son[1]->tag, "Exp") &&
@@ -1675,6 +1726,10 @@ InterCode Stmt() {
 
             glb_node = glb_node->son[2];
             InterCode sub_code2 = Exp();
+            char *tmp_truelabel = truelabel;
+            char *tmp_falselabel = falselabel;
+            truelabel = NULL;
+            falselabel = NULL;
             glb_node = cur_node;
 
             glb_node = glb_node->son[3];
@@ -1685,7 +1740,22 @@ InterCode Stmt() {
             InterCode sub_code4 = Stmt();
             glb_node = cur_node;
 
-            return;
+            /*
+            condition exp
+            true_label
+            stmt
+            false_label
+            */
+            return conn_code(
+                sub_code2,
+                conn_code(
+                    code_LABEL(tmp_truelabel),
+                    conn_code(
+                        sub_code4,
+                        code_LABEL(tmp_falselabel)
+                    )
+                )
+            );
         } else if (
             !strcmp(cur_node->son[0]->tag, "WHILE") &&
             !strcmp(cur_node->son[1]->tag, "LP") &&
@@ -1703,7 +1773,11 @@ InterCode Stmt() {
             glb_node = cur_node;
 
             glb_node = glb_node->son[2];
-            Exp();
+            InterCode sub_code2 = Exp();
+            char *tmp_truelabel = truelabel;
+            char *tmp_falselabel = falselabel;
+            truelabel = NULL;
+            falselabel = NULL;
             glb_node = cur_node;
 
             glb_node = glb_node->son[3];
@@ -1711,10 +1785,34 @@ InterCode Stmt() {
             glb_node = cur_node;
 
             glb_node = glb_node->son[4];
-            Stmt();
+            InterCode sub_code4 = Stmt();
             glb_node = cur_node;
 
-            return;
+            char *back_label = new_label();
+            /*
+            back_label
+            condition exp
+            true_label
+            stmt
+            goto back_label
+            false_label
+            */
+            return conn_code(
+                code_LABEL(back_label),
+                conn_code(
+                    sub_code2,
+                    conn_code(
+                        code_LABEL(tmp_truelabel),
+                        conn_code(
+                            sub_code4,
+                            conn_code(
+                                code_JMP(back_label),
+                                code_LABEL(tmp_falselabel)
+                            )
+                        )
+                    )
+                )
+            );
         }
     } else if (son_cnt == 7) {
         if (
@@ -1736,7 +1834,11 @@ InterCode Stmt() {
             glb_node = cur_node;
 
             glb_node = glb_node->son[2];
-            Exp();
+            InterCode sub_code2 = Exp();
+            char *tmp_truelabel = truelabel;
+            char *tmp_falselabel = falselabel;
+            truelabel = NULL;
+            falselabel = NULL;
             glb_node = cur_node;
 
             glb_node = glb_node->son[3];
@@ -1744,7 +1846,7 @@ InterCode Stmt() {
             glb_node = cur_node;
 
             glb_node = glb_node->son[4];
-            Stmt();
+            InterCode sub_code4 = Stmt();
             glb_node = cur_node;
 
             glb_node = glb_node->son[5];
@@ -1752,10 +1854,38 @@ InterCode Stmt() {
             glb_node = cur_node;
 
             glb_node = glb_node->son[6];
-            Stmt();
+            InterCode sub_code6 = Stmt();
             glb_node = cur_node;
 
-            return;
+            char *end_label = new_label();
+            /*
+            condition exp
+            true_label
+            stmt
+            goto end_label
+            false_label
+            stmt
+            end_label
+            */
+            return conn_code(
+                sub_code2,
+                conn_code(
+                    code_LABEL(tmp_truelabel),
+                    conn_code(
+                        sub_code4,
+                        conn_code(
+                            code_JMP(end_label),
+                            conn_code(
+                                code_LABEL(tmp_falselabel),
+                                conn_code(
+                                    sub_code6,
+                                    code_LABEL(end_label)
+                                )
+                            )
+                        )
+                    )
+                )
+            );
         }
     }
     printf("%d ", cur_node->lineno);

@@ -16,7 +16,7 @@
 
 %token INT FLOAT
 %token LP RP LB RB LC RC DOT SEMI COMMA NOT
-%token STAR DIV MINUS PLUS RELOP AND OR ASSIGNOP
+%token STAR DIV MINUS PLUS AND OR RELOP ASSIGNOP
 %token RETURN IF ELSE WHILE
 %token ID TYPE STRUCT
 
@@ -26,8 +26,8 @@
 // %type <tree_node> StmtList Stmt DefList Def DecList Dec
 // %type <tree_node> Exp Args
 
-%left  LP RP LB RB DOT
 %right ASSIGNOP
+%left  LP RP LB RB DOT
 %right STAR DIV
 %left  MINUS
 %left  PLUS
@@ -42,7 +42,7 @@
 %%
 /* syntax */
 
-Program : ExtDefList { $$ = create_node("Program", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); if(has_error == 0) {show_tree($$, 0); parse_AST($$);} }
+Program : ExtDefList { $$ = create_node("Program", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); if(has_error == 0) {/*show_tree($$, 0);*/ parse_AST($$);} }
 ;
 
 ExtDefList : ExtDef ExtDefList { $$ = create_node("ExtDefList", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); add_son($$, $2); }
