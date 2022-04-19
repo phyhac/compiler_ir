@@ -10,17 +10,17 @@ syntax.tab.c: syntax.y
 	bison -t syntax.y
 
 clean:
-	rm out/* parser lex.yy.c syntax.tab.c syntax.tab.h syntax.output a.out
+	rm ir_out/* parser lex.yy.c syntax.tab.c syntax.tab.h syntax.output a.out
 
 debug:
 	bison -d syntax.y -v
 	vim syntax.output
 
 test: ir_tests/*
-	./parser ir_tests/test05.cmm > out/test05.out
-	./parser ir_tests/test06.cmm > out/test06.out
-	./parser ir_tests/test07.cmm > out/test07.out
-	./parser ir_tests/test08.cmm > out/test08.out
+	./parser ir_tests/test05.cmm > ir_out/test05.ir
+	./parser ir_tests/test06.cmm > ir_out/test06.ir
+	./parser ir_tests/test07.cmm > ir_out/test07.ir
+	./parser ir_tests/test08.cmm > ir_out/test08.ir
 
 
 test_lex: lex_tests/*

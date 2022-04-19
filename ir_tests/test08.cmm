@@ -1,3 +1,7 @@
+int foo(int x) {
+    return x + 1;
+}
+
 int main() {
     int i, a[10];
     i = 0;
@@ -9,7 +13,7 @@ int main() {
 
     if (i == 2) {
         i = 3;
-        a[2] = 9;
+        a[2] = foo(i);
     }
 
     while (i < 10) {

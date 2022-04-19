@@ -212,7 +212,7 @@ struct CodeElem_ {
         TARGET,
         ARG1,
         ARG2,
-    } type; 
+    } type;
     char *detail;
     CodeElem next;
 };
@@ -2655,14 +2655,3 @@ void parse_AST(tree *root) {
     
     return;
 }
-
-// int main(int argc, char const *argv[])
-// {
-//     InterCode code;
-//     code = code_ASSIGNOP("t1", "v1");
-//     code = conn_code(code, code_LABEL("label1"));
-//     code = conn_code(code, code_D_STAR("t2", "v2", "v3"));
-//     code = conn_code(code, code_T_JMP("label1", relop("v2", "<=", i2s(2))));
-//     print_code(code);
-//     return 0;
-// }
