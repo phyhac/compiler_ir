@@ -204,6 +204,39 @@ void enter(char *symbol_name) {
     return;
 }
 
+void add_read_write() {
+    FuncList func = malloc(sizeof(struct FuncList_));
+    func->ret = malloc(sizeof(struct Type_));
+    func->ret->kind = BASIC;
+    func->ret->size = 4;
+    func->ret->detail.basic = INT;
+    func->args = NULL;
+
+    cur_type = malloc(sizeof(struct Type_));
+    cur_type->kind = FUNCTION;
+    cur_type->detail.function = func;
+    enter("read");
+
+    func = malloc(sizeof(struct FuncList_));
+    func->ret = NULL;
+    func->args = malloc(sizeof(struct FieldList_));
+    func->args->name = "x";
+    func->args->next = NULL;
+    func->args->type = malloc(sizeof(struct Type_));
+    func->args->type->kind = BASIC;
+    func->args->type->size = 4;
+    func->args->type->detail.basic = INT;
+    
+    cur_type = malloc(sizeof(struct Type_));
+    cur_type->kind = FUNCTION;
+    cur_type->detail.function = func;
+    enter("write");
+
+    cur_type = NULL;
+    return;
+}
+
+
 typedef struct CodeElem_ *CodeElem;
 typedef struct InterCode_ *InterCode;
 
@@ -238,6 +271,9 @@ struct InterCode_ {
         DEC,
         CALL,
         ARG,
+
+        WRITE,
+        READ,
     } type;
     InterCode prev;
     InterCode next;
@@ -626,6 +662,36 @@ InterCode code_ARG(char *target) {
     return code;
 }
 
+InterCode code_WRITE(char *target) {
+    InterCode code = malloc(sizeof(struct InterCode_));
+    code->type = WRITE;
+    code->prev = NULL;
+    code->next = NULL;
+
+    CodeElem elem = malloc(sizeof(struct CodeElem_));
+    elem->next = NULL;
+    code->content = elem;
+    elem->type = TARGET;
+    elem->detail = target;
+
+    return code;
+}
+
+InterCode code_READ(char *target) {
+    InterCode code = malloc(sizeof(struct InterCode_));
+    code->type = READ;
+    code->prev = NULL;
+    code->next = NULL;
+
+    CodeElem elem = malloc(sizeof(struct CodeElem_));
+    elem->next = NULL;
+    code->content = elem;
+    elem->type = TARGET;
+    elem->detail = target;
+
+    return code;
+}
+
 void print_code(InterCode insts) {
     InterCode cur_inst;
     CodeElem cur_elem;
@@ -706,6 +772,12 @@ void print_code(InterCode insts) {
             case ARG:
                 printf("ARG %s\n", target);
             break;
+            case WRITE:
+                printf("WRITE %s\n", target);
+            break;
+            case READ:
+                printf("READ %s\n", target);
+            break;
             default:
                 printf("[alert] print instruction error..\n");
                 exit(0);
@@ -779,7 +851,6 @@ InterCode Args() {
 
     if (son_cnt == -1) {
         // empty
-        perror("Args is empty.");
         return NULL;
     } else if (son_cnt == 1) {
         if (
@@ -1384,6 +1455,27 @@ InterCode Exp() {
             cur_type = tmp->type->detail.function->ret;
 
             ret_var = temp_var();
+            if (!strcmp(func_name, "read")) {
+                return code_READ(ret_var);
+            }
+            if (!strcmp(func_name, "write")) {
+                InterCode tmp, prev;
+                prev = NULL;
+                for (tmp = sub_code2; tmp->next; tmp = tmp->next) {
+                    prev = tmp;
+                }
+                char *arg = malloc(10);
+                strcpy(arg, tmp->content->detail);
+                if (prev)
+                    prev->next = NULL;
+                else
+                    sub_code2 = NULL;
+                ret_var = NULL;
+                return conn_code(
+                    sub_code2,
+                    code_WRITE(arg)
+                );
+            }
             return conn_code(
                 sub_code2,
                 code_CALL(ret_var, func_name)
@@ -2648,6 +2740,7 @@ void parse_AST(tree *root) {
         return;
     }
     init_symtab();
+    add_read_write();
     glb_node = root;
     InterCode code = Program();
     print_code(code);

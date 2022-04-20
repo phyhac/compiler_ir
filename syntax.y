@@ -42,7 +42,7 @@
 %%
 /* syntax */
 
-Program : ExtDefList { $$ = create_node("Program", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); if(has_error == 0) {/*show_tree($$, 0);*/ parse_AST($$);} }
+Program : ExtDefList { $$ = create_node("Program", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); if(has_error == 0) {/*show_tree($$, 0)*/; parse_AST($$);} }
 ;
 
 ExtDefList : ExtDef ExtDefList { $$ = create_node("ExtDefList", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); add_son($$, $2); }
@@ -98,8 +98,8 @@ StmtList : /* empty */ { $$ = create_node("StmtList", NO_VAL, &PUB_VALUE, @$.fir
 ;
 
 Stmt : Exp { err_lineno = @$.first_line; err_msg = "Missing \";\""; has_msg = 1;} SEMI { has_msg = 0; $$ = create_node("Stmt", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); add_son($$, $3); }
-	| CompSt { $$ = create_node("Stmt", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); }
-	| RETURN Exp { err_lineno = @$.first_line; err_msg = "Missing \";\""; has_msg = 1;} SEMI { has_msg = 0; $$ = create_node("Stmt", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); add_son($$, $2); add_son($$, $4); }
+	| CompSt { $$ = create_node("Stmt", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1);}
+	| RETURN Exp { err_lineno = @$.first_line; err_msg = "Missing \";\""; has_msg = 1;} SEMI { has_msg = 0; $$ = create_node("Stmt", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); add_son($$, $2); add_son($$, $4);}
 	| IF LP Exp RP Stmt %prec LOWER_THAN_ELSE { $$ = create_node("Stmt", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); add_son($$, $2); add_son($$, $3); add_son($$, $4); add_son($$, $5); }
 	| IF LP Exp RP Stmt ELSE Stmt { $$ = create_node("Stmt", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); add_son($$, $2); add_son($$, $3); add_son($$, $4); add_son($$, $5); add_son($$, $6); add_son($$, $7); }
 	| WHILE LP Exp RP Stmt { $$ = create_node("Stmt", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); add_son($$, $2); add_son($$, $3); add_son($$, $4); add_son($$, $5); }
@@ -132,7 +132,7 @@ Exp : Exp ASSIGNOP Exp { $$ = create_node("Exp", NO_VAL, &PUB_VALUE, @$.first_li
 	| LP Exp RP { $$ = create_node("Exp", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); add_son($$, $2); add_son($$, $3); }
 	| MINUS Exp { $$ = create_node("Exp", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); add_son($$, $2); }
 	| NOT Exp {$$ = create_node("Exp", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); add_son($$, $2); }
-	| ID LP Args RP { $$ = create_node("Exp", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); add_son($$, $2); add_son($$, $3); add_son($$, $4); }
+	| ID LP Args RP { $$ = create_node("Exp", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); add_son($$, $2); add_son($$, $3); add_son($$, $4);}
 	| Exp LB Exp { err_lineno = @$.first_line; err_msg = "Missing \"]\""; has_msg = 1;} RB { has_msg = 0; $$ = create_node("Exp", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); add_son($$, $2); add_son($$, $3); add_son($$, $5); }
 	| Exp DOT ID { $$ = create_node("Exp", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); add_son($$, $2); add_son($$, $3); }
 	| ID { $$ = create_node("Exp", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); }
@@ -140,7 +140,8 @@ Exp : Exp ASSIGNOP Exp { $$ = create_node("Exp", NO_VAL, &PUB_VALUE, @$.first_li
 	| FLOAT { $$ = create_node("Exp", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); }
 ;
 
-Args : Exp COMMA Args { $$ = create_node("Args", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); add_son($$, $2); add_son($$, $3); }
+Args : /* empty */ { $$ = create_node("Args", NO_VAL, &PUB_VALUE, @$.first_line); $$->son_cnt = -1;}
+	| Exp COMMA Args { $$ = create_node("Args", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); add_son($$, $2); add_son($$, $3); }
 	| Exp { $$ = create_node("Args", NO_VAL, &PUB_VALUE, @$.first_line); add_son($$, $1); }
 ;
 

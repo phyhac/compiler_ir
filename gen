@@ -94,4 +94,5 @@ Exp : {has_ID=f} Exp {has_ID?, left_t = t} ASSIGNOP Exp {t = left_t}
 
 Args : Exp COMMA Args 
 	| Exp 
+	| {empty}
 ;

@@ -13,14 +13,18 @@ clean:
 	rm ir_out/* parser lex.yy.c syntax.tab.c syntax.tab.h syntax.output a.out
 
 debug:
-	bison -d syntax.y -v
-	vim syntax.output
+	bison -d syntax.y -t -v
+#	vim syntax.output
 
 test: ir_tests/*
+	./parser ir_tests/test01.cmm > ir_out/test01.ir
+	./parser ir_tests/test02.cmm > ir_out/test02.ir
+	
 	./parser ir_tests/test05.cmm > ir_out/test05.ir
 	./parser ir_tests/test06.cmm > ir_out/test06.ir
 	./parser ir_tests/test07.cmm > ir_out/test07.ir
 	./parser ir_tests/test08.cmm > ir_out/test08.ir
+	./parser ir_tests/test09.cmm > ir_out/test09.ir
 
 
 test_lex: lex_tests/*
